@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhythm Lab — ritmo del inglés</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1b2a;--surf:#152236;--surf2:#1a2a40;--brd:#243655;--txt:#e2e8f0;--txt2:#64748b;--txt3:#94a3b8;--a:#60a5fa;--b:#fb923c;--green:#34d399;--gold:#fbbf24;--red:#f87171;--mono:ui-monospace,Menlo,monospace}
+body{font-family:ui-sans-serif,system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:16px;font-size:14px;max-width:860px;margin:0 auto}
+h1{font-size:17px;font-weight:700}
+.sub{font-size:11px;color:var(--txt2);margin:4px 0 14px;line-height:1.55}
+button{font-family:inherit;cursor:pointer}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.sel{font-size:12px;padding:6px 10px;border-radius:8px;background:var(--surf2);color:var(--txt);border:1px solid var(--brd);font-family:inherit}
+.rec-btn{font-size:13px;font-weight:600;padding:8px 16px;border-radius:20px;border:1px solid var(--brd);background:var(--surf);color:var(--txt2);display:flex;align-items:center;gap:8px}
+.rec-btn.live{border-color:var(--red);background:#f8717118;color:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.65}}
+.up-btn{font-size:12px;font-weight:600;padding:8px 14px;border-radius:20px;border:1px solid var(--brd);background:var(--surf);color:var(--txt2);cursor:pointer;display:inline-block}
+.up-btn input{display:none}
+.lvl{width:60px;height:5px;border-radius:3px;background:var(--brd);overflow:hidden}
+.lvl>div{height:100%;background:var(--green);width:0%;transition:width .08s}
+.panel{background:var(--surf);border:1px solid var(--brd);border-radius:14px;padding:14px;margin-bottom:14px}
+.panel h3{font-size:12px;color:var(--txt3);font-weight:700;margin-bottom:3px}
+.hint{font-size:11px;color:var(--txt2);margin-bottom:10px;line-height:1.5}
+.sent-box{background:var(--surf2);border:1px solid var(--brd);border-radius:10px;padding:12px;margin-bottom:12px;line-height:1.9;font-size:14px;min-height:44px}
+.T{font-weight:800;color:var(--a)}
+.R{color:var(--txt2);font-size:13px}
+.wave-c{width:100%;height:72px;display:block;background:#0a1525;border-radius:10px;border:1px solid var(--brd);margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-bottom:14px}
+.sc{background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:10px 12px}
+.sl{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.sv{font-size:19px;font-weight:700;font-family:var(--mono)}
+.diag{background:var(--surf2);border:1px solid var(--brd);border-radius:12px;padding:14px;font-size:13px;line-height:1.65;margin-bottom:14px}
+.note{font-size:11px;color:var(--txt3);background:var(--surf2);border:1px solid var(--brd);border-radius:9px;padding:10px;line-height:1.55;margin-bottom:12px}
+.hdot{width:40px;height:40px;border-radius:50%;background:var(--surf2);border:2px solid var(--brd);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);color:var(--txt3);flex-direction:column}
+.hdot.good{border-color:var(--green);color:var(--green)}
+.hdot.mid{border-color:var(--gold);color:var(--gold)}
+.hdot.low{border-color:var(--red);color:var(--red)}
+.lane-legend{display:flex;gap:14px;font-size:10px;margin-top:8px;flex-wrap:wrap}
+.lane-legend span{display:flex;align-items:center;gap:5px;color:var(--txt3)}
+.ld{width:12px;height:12px;border-radius:2px}
+</style>
+</head>
+<body>
+
+<h1>Rhythm Lab</h1>
+<p class="sub">El inglés tiene ritmo <b style="color:var(--a)">acentual</b>: sílabas tónicas largas, átonas muy cortas. El español tiene ritmo <b style="color:var(--b)">silábico</b>: todas las sílabas duran igual. Medimos tu variación con el <b>nPVI</b> (Grabe &amp; Low 2002) y te ubicamos entre los dos idiomas.</p>
+
+<div class="bar">
+  <span style="font-size:12px;color:var(--txt2)">Frase:</span>
+  <select class="sel" id="sentSel" onchange="loadSent()"></select>
+</div>
+<div class="sent-box" id="sentBox"></div>
+
+<div class="bar">
+  <button class="rec-btn" id="recBtn" onclick="toggleRec()"><span id="recIc">●</span>&nbsp;<span id="recLbl">Grabar</span></button>
+  <div class="lvl"><div id="lvlFill"></div></div>
+  <label class="up-btn">📁 Subir audio<input type="file" accept="audio/*" onchange="loadFile(this.files[0])"></label>
+  <span id="durTxt" style="font-size:11px;color:var(--txt2)"></span>
+</div>
+
+<canvas class="wave-c" id="wave"></canvas>
+
+<div class="note" id="initNote">
+  <b>Cómo usarlo:</b> Elegí una frase y grabala leyendo en voz alta. Las <b style="color:var(--a)">sílabas en azul</b> son tónicas — alargalas y poneles énfasis. Las <span style="color:var(--txt2)">palabras en gris</span> son átonas — hacelas rápidas y breves. Luego mirá el carril rítmico y el nPVI para ver si tu patrón se acerca al inglés.
+</div>
+
+<div id="resSec" style="display:none">
+
+  <div class="panel">
+    <h3>Carril rítmico vocálico</h3>
+    <p class="hint">Cada rectángulo = una vocal detectada. <b>Ancho = duración.</b> EN=referencia inglés · ES=referencia español · VOS=tu grabación. <span style="color:var(--a)">■ Azul</span>=larga (tónica) · <span style="color:var(--b)">■ Naranja</span>=corta (átona)</p>
+    <div style="overflow-x:auto"><svg id="laneSVG" viewBox="0 0 720 192" width="100%" height="192" style="min-width:480px"></svg></div>
+    <div class="lane-legend">
+      <span><span class="ld" style="background:#2d5a8e"></span>EN ≈57 (objetivo inglés)</span>
+      <span><span class="ld" style="background:#2d3f52"></span>ES ≈35 (español)</span>
+      <span><span class="ld" style="background:var(--a)"></span>Tu vocal larga</span>
+      <span><span class="ld" style="background:var(--b)"></span>Tu vocal corta</span>
+    </div>
+  </div>
+
+  <div class="stats" id="statsGrid"></div>
+
+  <div class="panel">
+    <h3>Medidor nPVI — ¿dónde estás entre el español y el inglés?</h3>
+    <p class="hint">Español ≈ 35 · Inglés nativo ≈ 57. Zona roja = ritmo de ametralladora · Zona verde = variación del inglés.</p>
+    <svg id="gaugeSVG" viewBox="0 0 700 72" width="100%" height="72"></svg>
+  </div>
+
+  <div class="diag" id="diagBox"></div>
+
+  <div class="panel">
+    <h3>Historial de esta sesión</h3>
+    <p class="hint">Grabá varias veces y mirá si tu nPVI sube. Objetivo: ≥ 50.</p>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" id="histDots"></div>
+  </div>
+
+</div>
+
+<script>
+// ════ FRASES ════
+const SENTS=[
+  {label:"Beautiful people love interesting music",
+   html:`<span class="T">Beau</span>tiful <span class="T">peo</span>ple <span class="T">love</span> <span class="T">in</span>teresting <span class="T">mu</span>sic.`},
+  {label:"Students are studying in the library",
+   html:`<span class="R">The</span> <span class="T">stu</span>dents <span class="R">are</span> <span class="T">stu</span>dying <span class="R">in the</span> <span class="T">li</span>brary.`},
+  {label:"I want to go to the cinema tonight",
+   html:`<span class="R">I</span> <span class="T">want</span> <span class="R">to</span> <span class="T">go</span> <span class="R">to the</span> <span class="T">ci</span>nema to<span class="T">night</span>.`},
+  {label:"She was looking for a comfortable hotel",
+   html:`<span class="R">She was</span> <span class="T">look</span>ing <span class="R">for a</span> <span class="T">com</span>fortable ho<span class="T">tel</span>.`},
+  {label:"What do you want to eat for dinner",
+   html:`<span class="T">What</span> <span class="R">do you</span> <span class="T">want</span> <span class="R">to</span> <span class="T">eat</span> <span class="R">for</span> <span class="T">din</span>ner?`},
+  {label:"Yesterday I was talking to my teacher",
+   html:`<span class="T">Yes</span>terday <span class="R">I was</span> <span class="T">talk</span>ing <span class="R">to my</span> <span class="T">teach</span>er.`},
+  {label:"Peter and Anna are going to America",
+   html:`<span class="T">Pe</span>ter <span class="R">and</span> <span class="T">An</span>na <span class="R">are</span> <span class="T">go</span>ing <span class="R">to</span> A<span class="T">mer</span>ica.`},
+  {label:"Libre (escribe tu propia frase)",
+   html:`<span style="color:var(--txt2);font-style:italic">Usá cualquier frase del libro u otro material.</span>`},
+];
+
+const NPVI_ES=35, NPVI_EN=57;
+let history=[];
+
+// ════ GRABACIÓN ════
+let actx=null,stream=null,proc=null,srcN=null,chunks=[],isRec=false;
+function getCtx(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();return actx;}
+async function toggleRec(){
+  if(isRec){stopRec();return;}
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});}
+  catch(e){alert('No se pudo acceder al micrófono.');return;}
+  const c=getCtx();srcN=c.createMediaStreamSource(stream);proc=c.createScriptProcessor(4096,1,1);
+  proc.onaudioprocess=e=>{
+    const d=e.inputBuffer.getChannelData(0);chunks.push(new Float32Array(d));
+    let rms=0;for(let i=0;i<d.length;i++)rms+=d[i]*d[i];
+    document.getElementById('lvlFill').style.width=Math.min(100,Math.sqrt(rms/d.length)*400)+'%';
+    const o=e.outputBuffer.getChannelData(0);for(let i=0;i<o.length;i++)o[i]=0;};
+  srcN.connect(proc);proc.connect(c.destination);
+  isRec=true;chunks=[];setRecUI(true);}
+function stopRec(){if(!isRec)return;
+  try{srcN.disconnect();proc.disconnect();}catch(_){}
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  isRec=false;setRecUI(false);
+  document.getElementById('lvlFill').style.width='0%';
+  let len=0;chunks.forEach(c=>len+=c.length);
+  const samp=new Float32Array(len);let off=0;chunks.forEach(c=>{samp.set(c,off);off+=c.length;});
+  processAudio(samp,getCtx().sampleRate);}
+function setRecUI(on){const b=document.getElementById('recBtn');b.className='rec-btn'+(on?' live':'');
+  document.getElementById('recIc').textContent=on?'■':'●';document.getElementById('recLbl').textContent=on?'Detener':'Grabar';}
+async function loadFile(f){if(!f)return;
+  const buf=await f.arrayBuffer();const ab=await getCtx().decodeAudioData(buf.slice(0));
+  let s=ab.getChannelData(0);
+  if(ab.numberOfChannels>1){const s2=ab.getChannelData(1);const m=new Float32Array(s.length);for(let i=0;i<s.length;i++)m[i]=(s[i]+s2[i])/2;s=m;}
+  let mx=1e-6;for(let i=0;i<s.length;i++)mx=Math.max(mx,Math.abs(s[i]));
+  const n=new Float32Array(Math.min(s.length,ab.sampleRate*8));
+  for(let i=0;i<n.length;i++)n[i]=s[i]/mx*0.95;
+  processAudio(n,ab.sampleRate);}
+
+// ════ DETECCIÓN DE NÚCLEOS VOCÁLICOS ════
+function detectNuclei(samp,fs){
+  const wL=Math.round(0.020*fs),hop=Math.round(0.004*fs),N=Math.floor((samp.length-wL)/hop);
+  if(N<8)return[];
+  const en=new Float32Array(N),zcr=new Float32Array(N);
+  for(let i=0;i<N;i++){const st=i*hop;let e=0,z=0;
+    for(let j=0;j<wL;j++){e+=samp[st+j]*samp[st+j];if(j>0&&Math.sign(samp[st+j])!==Math.sign(samp[st+j-1]))z++;}
+    en[i]=Math.sqrt(e/wL);zcr[i]=z/wL;}
+  // voiced score con normalización local de energía
+  const halfW=Math.round(0.20*fs/hop);
+  const score=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    let s=0,c=0;for(let k=-halfW;k<=halfW;k++){if(i+k>=0&&i+k<N){s+=en[i+k];c++;}}
+    const locMean=c>0?s/c:en[i];
+    const fEst=zcr[i]*fs/2;
+    const vf=fEst<1200?1.0:fEst<2800?0.38:0.07;
+    score[i]=(locMean>1e-7?en[i]/locMean:0)*vf;}
+  // smooth
+  const sm=new Float32Array(N);const SW=8;
+  for(let i=0;i<N;i++){let s=0,c=0;for(let k=-SW;k<=SW;k++){if(i+k>=0&&i+k<N){s+=score[i+k];c++;}}sm[i]=s/c;}
+  let maxSm=0;for(let i=0;i<N;i++)if(sm[i]>maxSm)maxSm=sm[i];
+  if(maxSm<1e-6)return[];
+  const thr=maxSm*0.10;
+  // find regions
+  const nuc=[];let inR=false,rs=0,pe=0;
+  for(let i=0;i<N;i++){
+    if(!inR&&sm[i]>thr){inR=true;rs=i;pe=sm[i];}
+    else if(inR){if(sm[i]>pe)pe=sm[i];
+      if(sm[i]<=thr*0.72||i===N-1){
+        const ss=rs*hop,es=Math.min(i*hop+wL,samp.length),dur=(es-ss)/fs;
+        if(dur>=0.025){let ae=0;for(let j=rs;j<=i;j++)ae+=en[j];ae/=(i-rs+1);nuc.push({ss,es,dur,e:ae});}
+        inR=false;}}}
+  // merge < 38ms apart
+  const merged=[];for(const r of nuc){
+    if(merged.length>0){const p=merged[merged.length-1];
+      if((r.ss-p.es)/fs<0.038){p.es=r.es;p.dur=(p.es-p.ss)/fs;p.e=Math.max(p.e,r.e);continue;}}
+    merged.push({...r});}
+  return merged.filter(r=>r.dur>=0.028);}
+
+// ════ MÉTRICAS ════
+function calcNPVI(durs){if(durs.length<2)return null;
+  let s=0;for(let i=0;i<durs.length-1;i++){const a=durs[i],b=durs[i+1];if(a+b>0)s+=Math.abs(a-b)/((a+b)/2);}
+  return 100*s/(durs.length-1);}
+function calcPctV(nuc,totSamp,fs){return 100*nuc.reduce((a,r)=>a+r.dur,0)/(totSamp/fs);}
+function median(arr){const s=[...arr].sort((a,b)=>a-b);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+
+// ════ REFERENCIA (genRef) ════
+function genRef(N,totalDur,target){if(N<1||totalDur<=0)return[];
+  const avg=totalDur/N,k=target/100;
+  const L=avg*(1+k/2),S=Math.max(0.015,avg*(1-k/2));
+  return Array.from({length:N},(_,i)=>i%2===0?L:S);}
+
+// ════ DIBUJO ONDA ════
+function drawWave(samp,nuc){const cv=document.getElementById('wave');
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth||700,H=72;cv.width=W*dpr;cv.height=H*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+  nuc.forEach(r=>{ctx.fillStyle='rgba(52,211,153,0.14)';ctx.fillRect(r.ss/samp.length*W,0,(r.es-r.ss)/samp.length*W,H);});
+  ctx.strokeStyle='#60748b';ctx.lineWidth=1;ctx.beginPath();
+  const step=samp.length/W;for(let x=0;x<W;x++){let mn=1,mx=-1;const a=Math.floor(x*step),b=Math.floor((x+1)*step);
+    for(let i=a;i<b&&i<samp.length;i++){if(samp[i]<mn)mn=samp[i];if(samp[i]>mx)mx=samp[i];}
+    ctx.moveTo(x,H/2-mx*H/2*0.9);ctx.lineTo(x,H/2-mn*H/2*0.9);}ctx.stroke();}
+
+// ════ CARRIL RÍTMICO (3 filas) ════
+function drawLanes(durs){
+  if(!durs||durs.length<2)return;
+  const N=durs.length,tot=durs.reduce((a,b)=>a+b,0);
+  const refEN=genRef(N,tot,NPVI_EN),refES=genRef(N,tot,NPVI_ES);
+  const W=720,labelW=38,laneW=W-labelW,pad=2,rowH=56,H=rowH*3+24;
+  const med=median(durs);
+  const rows=[
+    {durs:refEN,label:'EN',lc:'#60a5fa',fn:(d,i)=>i%2===0?'#2d5a8e':'#162840'},
+    {durs:refES,label:'ES', lc:'#64748b',fn:()=>'#253344'},
+    {durs,       label:'VOS',lc:'#e2e8f0',fn:(d)=>d>=med?'#60a5fa':'#fb923c'}];
+  let svg='';
+  rows.forEach((row,ri)=>{
+    const yo=ri*(rowH+8)+4;
+    svg+=`<text x="${labelW-4}" y="${yo+rowH/2+4}" text-anchor="end" font-size="11" fill="${row.lc}" font-weight="700">${row.label}</text>`;
+    let x=labelW;
+    row.durs.forEach((d,i)=>{
+      const w=Math.max(3,(d/tot)*laneW-pad);
+      svg+=`<rect x="${x.toFixed(1)}" y="${yo+5}" width="${w.toFixed(1)}" height="${rowH-10}" rx="3" fill="${row.fn(d,i)}"/>`;
+      if(ri===2&&w>18)svg+=`<text x="${(x+w/2).toFixed(1)}" y="${yo+rowH}" text-anchor="middle" font-size="7" fill="#3a5570" font-family="${'monospace'}">${Math.round(d*1000)}</text>`;
+      x+=w+pad;});
+    if(ri<2)svg+=`<line x1="${labelW}" x2="${W}" y1="${yo+rowH+8}" y2="${yo+rowH+8}" stroke="#1a2a40" stroke-width="1"/>`;});
+  document.getElementById('laneSVG').setAttribute('viewBox',`0 0 ${W} ${H}`);
+  document.getElementById('laneSVG').setAttribute('height',H);
+  document.getElementById('laneSVG').innerHTML=svg;}
+
+// ════ MEDIDOR nPVI ════
+function drawGauge(val){
+  const W=700,H=72,P={l:60,r:40,t:14,b:28};const PW=W-P.l-P.r;
+  const scale=v=>P.l+Math.max(0,Math.min(1,(v-10)/(82-10)))*PW;
+  const zones=[[10,NPVI_ES,'#f87171'],[NPVI_ES,48,'#fbbf24'],[48,NPVI_EN,'#34d399'],[NPVI_EN,82,'#34d399']];
+  let svg=`<rect x="${P.l}" y="${P.t+10}" width="${PW}" height="12" rx="6" fill="#152236"/>`;
+  zones.forEach(([lo,hi,col])=>{const x1=scale(lo),x2=scale(hi);svg+=`<rect x="${x1.toFixed(1)}" y="${P.t+10}" width="${(x2-x1).toFixed(1)}" height="12" rx="3" fill="${col}" fill-opacity="0.3"/>`;});
+  const clamp=Math.min(82,Math.max(10,val));
+  const fillCol=val<NPVI_ES?'#f87171':val<48?'#fbbf24':'#34d399';
+  svg+=`<rect x="${P.l}" y="${P.t+10}" width="${(scale(clamp)-P.l).toFixed(1)}" height="12" rx="6" fill="${fillCol}" fill-opacity="0.7"/>`;
+  [[NPVI_ES,'ES ≈35','#64748b'],[NPVI_EN,'EN ≈57','#60a5fa']].forEach(([v,lbl,col])=>{const x=scale(v);
+    svg+=`<line x1="${x}" x2="${x}" y1="${P.t+7}" y2="${P.t+26}" stroke="${col}" stroke-width="1.5"/>`;
+    svg+=`<text x="${x}" y="${H-4}" text-anchor="middle" font-size="10" fill="${col}">${lbl}</text>`;});
+  const ux=scale(clamp);
+  svg+=`<circle cx="${ux}" cy="${P.t+16}" r="9" fill="${fillCol}" stroke="#fff" stroke-width="2"/>`;
+  svg+=`<text x="${ux}" y="${P.t+5}" text-anchor="middle" font-size="10" font-weight="700" fill="${fillCol}">nPVI ${Math.round(val)}</text>`;
+  document.getElementById('gaugeSVG').innerHTML=svg;}
+
+// ════ DIAGNÓSTICO ════
+function genDiag(npvi,pv,N){
+  if(N<3)return`<span style="color:var(--gold)">⚠ Solo detecté ${N} vocal${N===1?'':'es'} — grabá una frase completa con voz clara para un análisis fiable.</span>`;
+  let main='',tips=[];
+  if(npvi<NPVI_ES+4){main=`<span style="color:var(--red)">⬤ Ritmo de ametralladora</span> — tu variación vocálica es similar al español: las vocales duran casi lo mismo. El inglés necesita contrastes mucho más grandes entre tónicas y átonas.`;}
+  else if(npvi<48){main=`<span style="color:var(--gold)">⬤ Ritmo intermedio</span> — hay variación pero insuficiente. El patrón todavía se parece más al español que al inglés.`;}
+  else if(npvi<NPVI_EN){main=`<span style="color:var(--green)">⬤ Buen progreso</span> — tu variación vocálica se acerca al inglés. Exagerá un poco más la diferencia entre tónicas y átonas.`;}
+  else{main=`<span style="color:var(--green)">✓ En rango del inglés nativo</span> — tu variación vocálica (nPVI ${Math.round(npvi)}) está dentro del rango del inglés (≈57). ¡Muy bien!`;}
+  if(npvi<50){tips.push('Alargá <b>aún más</b> las sílabas tónicas — en inglés pueden durar el doble o el triple que las átonas.');}
+  if(npvi<50){tips.push('Palabras función (<em>the, a, of, to, are, was, for</em>) casi no tienen vocal — reducelas a un murmullo muy breve.');}
+  if(pv>47){tips.push(`%V alto (${Math.round(pv)}%) — el inglés tiene más consonantes; acortá más las vocales átonas.`);}
+  if(pv<28){tips.push(`%V bajo (${Math.round(pv)}%) — las vocales suenan muy breves. Asegurate de pronunciar todas las sílabas.`);}
+  const tipHtml=tips.length?`<ul style="margin-top:8px;padding-left:16px">${tips.map(t=>`<li style="margin-bottom:4px;font-size:12px">${t}</li>`).join('')}</ul>`:'';
+  return `${main}${tipHtml}`;}
+
+// ════ PIPELINE PRINCIPAL ════
+function processAudio(samp,fs){
+  document.getElementById('durTxt').textContent=Math.round(samp.length/fs*10)/10+' s';
+  const nuc=detectNuclei(samp,fs);
+  drawWave(samp,nuc);
+  if(nuc.length<2){
+    document.getElementById('resSec').style.display='';document.getElementById('initNote').style.display='none';
+    document.getElementById('diagBox').innerHTML='<span style="color:var(--gold)">⚠ No detecté suficientes vocales. Grabá una frase completa en voz alta y clara — no solo una palabra.</span>';
+    document.getElementById('laneSVG').innerHTML='';document.getElementById('gaugeSVG').innerHTML='';
+    document.getElementById('statsGrid').innerHTML='';return;}
+  const durs=nuc.map(r=>r.dur);
+  const npvi=calcNPVI(durs),pv=calcPctV(nuc,samp.length,fs);
+  const avgDur=durs.reduce((a,b)=>a+b,0)/durs.length*1000;
+  const maxD=Math.max(...durs)*1000,minD=Math.min(...durs)*1000;
+  // stats
+  const npviCol=npvi<NPVI_ES+4?'var(--red)':npvi<48?'var(--gold)':'var(--green)';
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="sc"><div class="sl">nPVI (variación)</div><div class="sv" style="color:${npviCol}">${npvi.toFixed(1)}</div></div>
+    <div class="sc"><div class="sl">%V (tiempo vocal)</div><div class="sv">${pv.toFixed(0)}<span style="font-size:12px;color:var(--txt2)">%</span></div></div>
+    <div class="sc"><div class="sl">Vocales detectadas</div><div class="sv">${nuc.length}</div></div>
+    <div class="sc"><div class="sl">Larga / Corta</div><div class="sv">${Math.round(maxD)}<span style="font-size:11px;color:var(--txt2)"> / ${Math.round(minD)} ms</span></div></div>`;
+  drawLanes(durs);
+  drawGauge(npvi);
+  document.getElementById('diagBox').innerHTML=genDiag(npvi,pv,nuc.length);
+  // historial
+  history.push(Math.round(npvi));if(history.length>7)history.shift();
+  const hd=document.getElementById('histDots');
+  hd.innerHTML=history.map(v=>{const cls=v>=NPVI_EN?'good':v>=46?'mid':'low';
+    return `<div class="hdot ${cls}"><span>${v}</span></div>`;}).join('<span style="color:var(--txt2);font-size:14px">→</span>').replace(/(<\/div>)(<span)/g,'$1<span style="color:var(--txt2);font-size:14px">→</span>$2');
+  if(history.length>1){hd.innerHTML=history.map((v,i)=>{const cls=v>=NPVI_EN?'good':v>=46?'mid':'low';return`<div class="hdot ${cls}"><span>${v}</span></div>`;}).join('<span style="color:var(--txt2);font-size:18px;padding:0 2px">→</span>')+`<span style="font-size:11px;color:var(--txt2);margin-left:4px">objetivo ≥ ${NPVI_EN}</span>`;}
+  document.getElementById('resSec').style.display='';document.getElementById('initNote').style.display='none';}
+
+// ════ UI ════
+function loadSent(){const s=SENTS[+document.getElementById('sentSel').value];document.getElementById('sentBox').innerHTML=s.html;}
+document.getElementById('sentSel').innerHTML=SENTS.map((s,i)=>`<option value="${i}">${s.label}</option>`).join('');
+loadSent();
+</script>
+</body>
+</html>
